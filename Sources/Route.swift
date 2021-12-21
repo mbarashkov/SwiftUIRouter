@@ -189,7 +189,7 @@ public extension Route where ValidatedData == RouteInformation {
 /// for all views inside the hierarchy.
 public final class RouteInformation: ObservableObject {
 	/// The resolved path component of the parent `Route`. For internal use only, at the moment.
-	let matchedPath: String
+	public let matchedPath: String
 	
 	/// The current relative path.
 	public let path: String
