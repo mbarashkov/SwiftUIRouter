@@ -88,18 +88,23 @@ public struct Route<ValidatedData, Content: View>: View {
 		self.validator = validator
 	}
 
-	@available(*, deprecated, renamed: "init(_:validator:content:)")
-	public init(
-		path: String,
-		validator: @escaping Validator,
-		@ViewBuilder content: @escaping (ValidatedData) -> Content
-	) {
-		self.init(path, validator: validator, content: content)
+	private struct ViewRouteInfo {
+		let validatedData: ValidatedData
+		let routeInformation: RouteInformation
 	}
 
+	private class VM: ObservableObject {
+		struct StackInfo {
+			let path: String
+			var viewRouteInfo: ViewRouteInfo?
+		}
+
+		var stackInfo = [Int: StackInfo]()
+	}
+
+	@StateObject private var vm = VM()
+
 	public var body: some View {
-		var validatedData: ValidatedData?
-		var routeInformation: RouteInformation?
 
 		if !switchEnvironment.isActive || (switchEnvironment.isActive && !switchEnvironment.isResolved) {
 			do {
@@ -109,9 +114,8 @@ public struct Route<ValidatedData, Content: View>: View {
 					relative: relativePath),
 				   let validated = validator(matchInformation)
 				{
-					validatedData = validated
-					routeInformation = matchInformation
-
+					let viewInfo = ViewRouteInfo(validatedData: validated, routeInformation: matchInformation)
+					vm.stackInfo[navigator.currentStackIndex] = .init(path: navigator.path, viewRouteInfo: viewInfo)
 					if switchEnvironment.isActive {
 						switchEnvironment.isResolved = true
 					}
@@ -121,15 +125,29 @@ public struct Route<ValidatedData, Content: View>: View {
 				fatalError("Unable to compile path glob '\(path)' to Regex. Error: \(error)")
 			}
 		}
-
 		return Group {
-			if let validatedData = validatedData,
-			   let routeInformation = routeInformation
-			{
-				content(validatedData)
-					.environment(\.relativePath, routeInformation.path)
-					.environmentObject(routeInformation)
-					.environmentObject(SwitchRoutesEnvironment())
+			ForEach(Array(vm.stackInfo.keys), id: \.self) { key in
+				let info = navigator.currentStackIndex == key ? vm.stackInfo[key]!.viewRouteInfo : nil
+				SaveableContainer(
+					contentData: info,
+					transition: navigator.lastAction?.transition ?? .identity,
+					action: navigator.lastAction?.action ?? .push
+				) { viewInfo in
+					content(viewInfo.validatedData)
+						.environment(\.relativePath, viewInfo.routeInformation.path)
+						.environmentObject(viewInfo.routeInformation)
+						.environmentObject(SwitchRoutesEnvironment())
+						.onDisappear {
+							if navigator.currentStackIndex < key {
+								// prevent child view model re-creation
+								DispatchQueue.main.async {
+									vm.stackInfo[key] = nil
+									vm.objectWillChange.send()
+								}
+							}
+						}
+				}
+				.zIndex(Double(key))
 			}
 		}
 	}
@@ -158,23 +176,6 @@ public extension Route where ValidatedData == RouteInformation {
 		self.path = path
 		self.validator = { $0 }
 		self.content = { _ in content() }
-	}
-
-	// MARK: - Deprecated initializers.
-	// These will be completely removed in a future version.
-	@available(*, deprecated, renamed: "init(_:content:)")
-	init(path: String, @ViewBuilder content: @escaping (RouteInformation) -> Content) {
-		self.init(path, content: content)
-	}
-
-	@available(*, deprecated, renamed: "init(_:content:)")
-	init(path: String, @ViewBuilder content: @escaping () -> Content) {
-		self.init(path, content: content)
-	}
-
-	@available(*, deprecated, renamed: "init(_:content:)")
-	init(path: String, content: @autoclosure @escaping () -> Content) {
-		self.init(path, content: content)
 	}
 }
 

@@ -40,8 +40,10 @@ public struct SwitchRoutes<Content: View>: View {
 	}
 	
 	public var body: some View {
-		contents()
-			.environmentObject(SwitchRoutesEnvironment(active: true))
+		ZStack {
+			contents()
+				.environmentObject(SwitchRoutesEnvironment(active: true))
+		}
 	}
 }
 
