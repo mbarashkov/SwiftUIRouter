@@ -18,8 +18,7 @@ import SwiftUI
 public final class Navigator: ObservableObject {
 
 	@Published private var historyStack: [String]
-	@Published private var forwardStack: [String] = []
-	
+
 	/// Last navigation that occurred.
 	@Published public private(set) var lastAction: NavigationAction?
 	
@@ -46,10 +45,6 @@ public final class Navigator: ObservableObject {
 
 	public var canGoBack: Bool {
 		historyStack.count > 1
-	}
-		
-	public var canGoForward: Bool {
-		!forwardStack.isEmpty
 	}
 
 	public var currentStackIndex: Int {
@@ -83,8 +78,6 @@ public final class Navigator: ObservableObject {
 			#endif
 			return
 		}
-	
-		forwardStack.removeAll()
 
 		if replace && !historyStack.isEmpty {
 			historyStack[historyStack.endIndex - 1] = path
@@ -112,8 +105,6 @@ public final class Navigator: ObservableObject {
 		let previousPath = path
 
 		let total = min(total, historyStack.count)
-		let start = historyStack.count - total
-		forwardStack.append(contentsOf: historyStack[start...].reversed())
 		historyStack.removeLast(total)
 		
 		lastAction = NavigationAction(
@@ -122,32 +113,8 @@ public final class Navigator: ObservableObject {
 			action: .back)
 	}
 	
-	/// Go forward *n* steps in the navigation history.
-	///
-	/// `total` will always be clamped and thus prevent from going out of bounds.
-	///
-	/// - Parameter total: Total steps to go forward.
-	public func goForward(total: Int = 1) {
-		guard canGoForward else {
-			return
-		}
-
-		let previousPath = path
-
-		let total = min(total, forwardStack.count)
-		let start = forwardStack.count - total
-		historyStack.append(contentsOf: forwardStack[start...])
-		forwardStack.removeLast(total)
-		
-		lastAction = NavigationAction(
-			currentPath: path,
-			previousPath: previousPath,
-			action: .forward)
-	}
-	
 	/// Clear the entire navigation history.
 	public func clear() {
-		forwardStack.removeAll()
 		historyStack = [path]
 		lastAction = nil
 	}
