@@ -12,15 +12,29 @@ public struct Transition {
 	}
 
 	public static let identity = Transition(type: .identity)
-	public static let modal = Transition(type: .modal)
-	public static let sliderNav = Transition(type: .sliderNav)
 	public static let overlay = Transition(type: .overlay)
+
+	public static func modal(duration: TimeInterval? = nil, curve: UIView.AnimationCurve? = nil) -> Self {
+		self.init(type: .modal, duration: duration, curve: curve)
+	}
+
+	public static let sliderNav = Transition(type: .sliderNav)
+
+	public static func sliderNav(duration: TimeInterval? = nil, curve: UIView.AnimationCurve? = nil) -> Self {
+		self.init(type: .sliderNav, duration: duration, curve: curve)
+	}
+
+	public static let modal = Transition(type: .modal)
+
+	public static func overlay(duration: TimeInterval? = nil, curve: UIView.AnimationCurve? = nil) -> Self {
+		self.init(type: .overlay, duration: duration, curve: curve)
+	}
 }
 
 public struct FinalTransition: Equatable {
-	let type: TransitionType
-	let duration: TimeInterval
-	let curve: UIView.AnimationCurve
+	public let type: TransitionType
+	public let duration: TimeInterval
+	public let curve: UIView.AnimationCurve
 
 	public init(type: TransitionType, duration: TimeInterval, curve: UIView.AnimationCurve) {
 		self.type = type

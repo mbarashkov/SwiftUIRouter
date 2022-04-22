@@ -33,7 +33,7 @@ struct SaveableContainer<Content: View, Data>: UIViewControllerRepresentable {
 	}
 }
 
-class HostingControllerWrapper<Content: View, Data>: UIViewController {
+final class HostingControllerWrapper<Content: View, Data>: UIViewController {
 	private enum PresenceState {
 		case hidden
 		case appearing
@@ -48,6 +48,7 @@ class HostingControllerWrapper<Content: View, Data>: UIViewController {
 		super.init(nibName: nil, bundle: nil)
 		view.backgroundColor = .clear
 		view.clipsToBounds = true
+		view.isUserInteractionEnabled = false
 	}
 
 	var content: (Data) -> Content {
@@ -57,6 +58,7 @@ class HostingControllerWrapper<Content: View, Data>: UIViewController {
 	}
 	var transition: FinalTransition = FinalTransition.identity
 	var action: NavigationAction.Action = .push
+	var contentData: Data?
 
 	private func updateContentIfNeeded() {
 		if let contentData = savedContentData, state != .hidden {
@@ -66,13 +68,15 @@ class HostingControllerWrapper<Content: View, Data>: UIViewController {
 
 	override func viewDidLayoutSubviews() {
 		super.viewDidLayoutSubviews()
-		hostingController.view.frame = view.bounds
+		hostingController.view.frame.size = view.bounds.size
+
+		// prevent safe area related layout change during animation
+		hostingController.additionalSafeAreaInsets = view.safeAreaInsets - hostingController.view.safeAreaInsets
 	}
 
 	private var state = PresenceState.hidden
-
 	private var savedContentData: Data?
-	var contentData: Data?
+	private var animator: UIViewPropertyAnimator!
 
 	func animateIfNeeded() {
 		if contentData != nil {
@@ -104,15 +108,20 @@ class HostingControllerWrapper<Content: View, Data>: UIViewController {
 		let createParameters = visible ? transitionBuilder.appearingParameters : transitionBuilder.disappearingParameters
 
 		view.layoutIfNeeded()
+		view.isUserInteractionEnabled = false
 
-		let transitionParameters = createParameters(hostingController.view.frame.size, action)
+		let transitionParameters = createParameters(view.bounds.size, action)
 
 		let animations = { [self] in
 			transitionParameters.final.apply(to: hostingController.view)
+			view.setNeedsLayout()
+			view.layoutIfNeeded()
 		}
 		let animationCompletion = { [self] in
 			if visible {
 				state = .visible
+				view.isUserInteractionEnabled = true
+				view.setNeedsLayout()
 			} else {
 				state = .hidden
 				hostingController.view.removeFromSuperview()
@@ -133,9 +142,10 @@ class HostingControllerWrapper<Content: View, Data>: UIViewController {
 					}
 				}
 			} else {
-				let animator = UIViewPropertyAnimator(
+				animator?.stopAnimation(true)
+				animator = UIViewPropertyAnimator(
 					duration: transition.duration,
-					curve: .easeOut,
+					curve: transition.curve,
 					animations: animations
 				)
 				animator.addCompletion { position in
@@ -144,7 +154,6 @@ class HostingControllerWrapper<Content: View, Data>: UIViewController {
 				}
 				animator.startAnimation()
 			}
-
 		} else {
 			animations()
 			animationCompletion()
@@ -156,6 +165,11 @@ class HostingControllerWrapper<Content: View, Data>: UIViewController {
 	}
 }
 
+private extension UIEdgeInsets {
+	static func - (lhs: Self, rhs: Self) -> Self {
+		Self(top: lhs.top - rhs.top, left: lhs.left - rhs.left, bottom: lhs.bottom - rhs.bottom, right: lhs.right - rhs.right)
+	}
+}
 
 private extension TransitionParameters.State {
 	func apply(to view: UIView) {

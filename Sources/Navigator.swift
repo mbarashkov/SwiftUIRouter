@@ -21,10 +21,15 @@ public final class Navigator: ObservableObject {
 		let transition: FinalTransition
 	}
 
-	@Published private var historyStack: [HistoryStackItem]
+	var historyStack: [HistoryStackItem]
 
 	/// Last navigation that occurred.
-	@Published public private(set) var lastAction: NavigationAction?
+	public private(set) var lastAction: NavigationAction? {
+		didSet {
+			// hack around the bug, which causes @Publised to be called before value is updated
+			objectWillChange.send()
+		}
+	}
 	
 	private let initialPath: String
 
@@ -105,7 +110,6 @@ public final class Navigator: ObservableObject {
 		else {
 			historyStack.append(stackItem)
 		}
-		
 		lastAction = NavigationAction(
 			currentPath: path,
 			previousPath: previousPath,
@@ -119,15 +123,15 @@ public final class Navigator: ObservableObject {
 	/// `total` will always be clamped and thus prevent from going out of bounds.
 	///
 	/// - Parameter total: Total steps to go back.
-	public func goBack(total: Int = 1, transition: Transition? = nil) {
+	public func goBack(total: Int = 1, transition: Transition = Transition()) {
 		guard canGoBack else {
 			return
 		}
 		let previousPath = path
-		let transition = transition
-			.map {
-				FinalTransition(optionalableTransition: $0, defaultTransition: defaultTransition)
-			} ?? historyStack.last?.transition ?? .identity
+		let transition = FinalTransition(
+			optionalableTransition: transition,
+			defaultTransition: historyStack.last?.transition ?? defaultTransition
+		)
 
 		let total = min(total, historyStack.count)
 		historyStack.removeLast(total)

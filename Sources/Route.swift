@@ -70,6 +70,7 @@ public struct Route<ValidatedData, Content: View>: View {
 	@EnvironmentObject private var navigator: Navigator
 	@EnvironmentObject private var switchEnvironment: SwitchRoutesEnvironment
 	@StateObject private var pathMatcher = PathMatcher()
+	@StateObject private var stackInfoHolder = StackInfoHolder()
 
 	private let content: (ValidatedData) -> Content
 	private let path: String
@@ -93,7 +94,7 @@ public struct Route<ValidatedData, Content: View>: View {
 		let routeInformation: RouteInformation
 	}
 
-	private class VM: ObservableObject {
+	private final class StackInfoHolder: ObservableObject {
 		struct StackInfo {
 			let path: String
 			var viewRouteInfo: ViewRouteInfo?
@@ -102,10 +103,7 @@ public struct Route<ValidatedData, Content: View>: View {
 		var stackInfo = [Int: StackInfo]()
 	}
 
-	@StateObject private var vm = VM()
-
 	public var body: some View {
-
 		if !switchEnvironment.isActive || (switchEnvironment.isActive && !switchEnvironment.isResolved) {
 			do {
 				if let matchInformation = try pathMatcher.match(
@@ -115,7 +113,7 @@ public struct Route<ValidatedData, Content: View>: View {
 				   let validated = validator(matchInformation)
 				{
 					let viewInfo = ViewRouteInfo(validatedData: validated, routeInformation: matchInformation)
-					vm.stackInfo[navigator.currentStackIndex] = .init(path: navigator.path, viewRouteInfo: viewInfo)
+					stackInfoHolder.stackInfo[navigator.currentStackIndex] = .init(path: navigator.path, viewRouteInfo: viewInfo)
 					if switchEnvironment.isActive {
 						switchEnvironment.isResolved = true
 					}
@@ -125,13 +123,15 @@ public struct Route<ValidatedData, Content: View>: View {
 				fatalError("Unable to compile path glob '\(path)' to Regex. Error: \(error)")
 			}
 		}
+		let action = navigator.lastAction?.action ?? .push
+		let transition = navigator.lastAction?.transition ?? .identity
 		return Group {
-			ForEach(Array(vm.stackInfo.keys), id: \.self) { key in
-				let info = navigator.currentStackIndex == key ? vm.stackInfo[key]!.viewRouteInfo : nil
+			ForEach(Array(stackInfoHolder.stackInfo.keys), id: \.self) { key in
+				let info = navigator.currentStackIndex == key ? stackInfoHolder.stackInfo[key]!.viewRouteInfo : nil
 				SaveableContainer(
 					contentData: info,
-					transition: navigator.lastAction?.transition ?? .identity,
-					action: navigator.lastAction?.action ?? .push
+					transition: transition,
+					action: action
 				) { viewInfo in
 					content(viewInfo.validatedData)
 						.environment(\.relativePath, viewInfo.routeInformation.path)
@@ -139,14 +139,15 @@ public struct Route<ValidatedData, Content: View>: View {
 						.environmentObject(SwitchRoutesEnvironment())
 						.onDisappear {
 							if navigator.currentStackIndex < key {
-								// prevent child view model re-creation
+								// prevent child view model re-creation during removing from stack
 								DispatchQueue.main.async {
-									vm.stackInfo[key] = nil
-									vm.objectWillChange.send()
+									stackInfoHolder.stackInfo[key] = nil
+									stackInfoHolder.objectWillChange.send()
 								}
 							}
 						}
 				}
+				.ignoresSafeArea()
 				.zIndex(Double(key))
 			}
 		}
