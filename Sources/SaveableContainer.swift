@@ -135,25 +135,28 @@ final class HostingControllerWrapper<Content: View, Data>: UIViewController {
 		let animated = transition.duration > 0 && transition.type != .identity
 		if animated {
 			transitionParameters.initial.apply(to: hostingController.view)
+			animator?.stopAnimation(true)
+			animator = UIViewPropertyAnimator(
+				duration: transition.duration,
+				curve: transition.curve
+			)
 			if transitionParameters.initial == transitionParameters.final {
-				DispatchQueue.main.asyncAfter(deadline: .now() + transition.duration) { [self] in
-					if state == initialState {
-						animationCompletion()
-					}
+				let fakeAnimationView = UIView(frame: .zero)
+				view.addSubview(fakeAnimationView)
+				animator.addAnimations {
+					fakeAnimationView.alpha = 0
+				}
+				animator.addCompletion { _ in
+					fakeAnimationView.removeFromSuperview()
 				}
 			} else {
-				animator?.stopAnimation(true)
-				animator = UIViewPropertyAnimator(
-					duration: transition.duration,
-					curve: transition.curve,
-					animations: animations
-				)
-				animator.addCompletion { position in
-					guard position == .end else { return }
-					animationCompletion()
-				}
-				animator.startAnimation()
+				animator.addAnimations(animations)
 			}
+			animator.addCompletion { position in
+				guard position == .end else { return }
+				animationCompletion()
+			}
+			animator.startAnimation()
 		} else {
 			animations()
 			animationCompletion()
