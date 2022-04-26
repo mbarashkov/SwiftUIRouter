@@ -147,6 +147,7 @@ public struct Route<ValidatedData, Content: View>: View {
 							}
 						}
 				}
+				.environment(\.isCurrentDestination, info != nil)
 				.ignoresSafeArea()
 				.zIndex(Double(key))
 			}

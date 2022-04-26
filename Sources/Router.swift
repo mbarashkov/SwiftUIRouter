@@ -68,9 +68,18 @@ struct RelativeRouteEnvironment: EnvironmentKey {
 	static var defaultValue = "/"
 }
 
+struct IsCurrentDestinationEnvironment: EnvironmentKey {
+	static var defaultValue = false
+}
+
 extension EnvironmentValues {
 	var relativePath: String {
 		get { self[RelativeRouteEnvironment.self] }
 		set { self[RelativeRouteEnvironment.self] = newValue }
+	}
+
+	public var isCurrentDestination: Bool {
+		get { self[IsCurrentDestinationEnvironment.self] }
+		set { self[IsCurrentDestinationEnvironment.self] = newValue }
 	}
 }
