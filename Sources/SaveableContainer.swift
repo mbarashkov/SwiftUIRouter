@@ -68,10 +68,10 @@ final class HostingControllerWrapper<Content: View, Data>: UIViewController {
 
 	override func viewDidLayoutSubviews() {
 		super.viewDidLayoutSubviews()
-		hostingController.view.frame.size = view.bounds.size
+		hostingController?.view.frame.size = view.bounds.size
 
 		// prevent safe area related layout change during animation
-		hostingController.additionalSafeAreaInsets = view.safeAreaInsets - hostingController.view.safeAreaInsets
+		hostingController?.additionalSafeAreaInsets = view.safeAreaInsets - hostingController.view.safeAreaInsets
 	}
 
 	private var state = PresenceState.hidden
