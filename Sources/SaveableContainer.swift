@@ -82,7 +82,7 @@ final class HostingControllerWrapper<Content: View, Data>: UIViewController {
 		if contentData != nil {
 			savedContentData = contentData
 		}
-		if contentData != nil && state != .hidden || contentData == nil && state == .hidden {
+		if (contentData != nil && state != .hidden) || (contentData == nil && state == .hidden) {
 			return
 		}
 		let initialState: PresenceState
