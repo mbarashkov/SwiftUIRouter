@@ -34,8 +34,8 @@ public struct Router<Content: View>: View {
 	/// Initialize a Router environment.
 	/// - Parameter initialPath: The initial path the `Router` should start at once initialized.
 	/// - Parameter content: Content views to render inside the Router environment.
-	public init(initialPath: String = "/", @ViewBuilder content: () -> Content) {
-		_navigator = StateObject(wrappedValue: Navigator(initialPath: initialPath))
+	public init(initialPath: String = "/", defaultTransition: FinalTransition = .identity, @ViewBuilder content: () -> Content) {
+		_navigator = StateObject(wrappedValue: Navigator(initialPath: initialPath, defaultTransition: defaultTransition))
 		self.content = content()
 	}
 	
@@ -48,7 +48,7 @@ public struct Router<Content: View>: View {
 	///
 	/// - Parameter navigator: A pre-initialized instance of `Navigator`.
 	/// - Parameter content: Content views to render inside the Router environment.
-	public init(navigator: Navigator, @ViewBuilder content: () -> Content) {
+	public init(navigator: Navigator, defaultTransition: FinalTransition, @ViewBuilder content: () -> Content) {
 		_navigator = StateObject(wrappedValue: navigator)
 		self.content = content()
 	}
@@ -68,9 +68,18 @@ struct RelativeRouteEnvironment: EnvironmentKey {
 	static var defaultValue = "/"
 }
 
+struct IsCurrentDestinationEnvironment: EnvironmentKey {
+	static var defaultValue = false
+}
+
 extension EnvironmentValues {
 	var relativePath: String {
 		get { self[RelativeRouteEnvironment.self] }
 		set { self[RelativeRouteEnvironment.self] = newValue }
+	}
+
+	public var isCurrentDestination: Bool {
+		get { self[IsCurrentDestinationEnvironment.self] }
+		set { self[IsCurrentDestinationEnvironment.self] = newValue }
 	}
 }

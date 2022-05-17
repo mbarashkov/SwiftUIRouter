@@ -16,14 +16,24 @@ import SwiftUI
 /// @EnvironmentObject var navigator: Navigator
 /// ```
 public final class Navigator: ObservableObject {
+	struct HistoryStackItem {
+		let path: String
+		let transition: FinalTransition
+	}
 
-	@Published private var historyStack: [String]
-	@Published private var forwardStack: [String] = []
-	
+	var historyStack: [HistoryStackItem]
+
 	/// Last navigation that occurred.
-	@Published public private(set) var lastAction: NavigationAction?
+	public private(set) var lastAction: NavigationAction? {
+		didSet {
+			// hack around the bug, which causes @Publised to be called before value is updated
+			objectWillChange.send()
+		}
+	}
 	
 	private let initialPath: String
+
+	var defaultTransition: FinalTransition
 	
 	/// Initialize a `Navigator` to be fed to `Router` manually.
 	///
@@ -33,23 +43,24 @@ public final class Navigator: ObservableObject {
 	/// It is strongly advised to reference the `Navigator` via the provided Environment Object instead.
 	///
 	/// - Parameter initialPath: The initial path the `Navigator` should start at once initialized.
-	public init(initialPath: String = "/") {
+	public init(initialPath: String = "/", defaultTransition: FinalTransition) {
 		self.initialPath = initialPath
-		self.historyStack = [initialPath]
+		self.defaultTransition = defaultTransition
+		self.historyStack = [HistoryStackItem(path: initialPath, transition: FinalTransition(type: .identity, duration: 0, curve: .linear))]
 	}
 
 	// MARK: Getters.
 	/// Current navigation path of the Router environment.
 	public var path: String {
-		historyStack.last ?? initialPath
+		historyStack.last?.path ?? initialPath
 	}
 
 	public var canGoBack: Bool {
 		historyStack.count > 1
 	}
-		
-	public var canGoForward: Bool {
-		!forwardStack.isEmpty
+
+	public var currentStackIndex: Int {
+		historyStack.count - 1
 	}
 	
 	// MARK: Methods.
@@ -69,7 +80,11 @@ public final class Navigator: ObservableObject {
 	///
 	/// - Parameter path: Path of the new location to navigate to.
 	/// - Parameter replace: if `true` will replace the last path in the history stack with the new path.
-	public func navigate(_ path: String, replace: Bool = false) {
+	public func navigate(
+		_ path: String,
+		transition: Transition = Transition(),
+		replace: Bool = false
+	) {
 		let path = resolvePaths(self.path, path)
 		let previousPath = self.path
 		
@@ -79,20 +94,28 @@ public final class Navigator: ObservableObject {
 			#endif
 			return
 		}
-	
-		forwardStack.removeAll()
+		let finalTransition = FinalTransition(
+			optionalableTransition: transition,
+			defaultTransition: defaultTransition
+		)
+
+		let stackItem = HistoryStackItem(
+			path: path,
+			transition: finalTransition
+		)
 
 		if replace && !historyStack.isEmpty {
-			historyStack[historyStack.endIndex - 1] = path
+			historyStack[historyStack.endIndex - 1] = stackItem
 		}
 		else {
-			historyStack.append(path)
+			historyStack.append(stackItem)
 		}
-		
 		lastAction = NavigationAction(
 			currentPath: path,
 			previousPath: previousPath,
-			action: .push)
+			action: .push,
+			transition: finalTransition
+		)
 	}
 
 	/// Go back *n* steps in the navigation history.
@@ -100,51 +123,30 @@ public final class Navigator: ObservableObject {
 	/// `total` will always be clamped and thus prevent from going out of bounds.
 	///
 	/// - Parameter total: Total steps to go back.
-	public func goBack(total: Int = 1) {
+	public func goBack(total: Int = 1, transition: Transition = Transition()) {
 		guard canGoBack else {
 			return
 		}
-
 		let previousPath = path
+		let transition = FinalTransition(
+			optionalableTransition: transition,
+			defaultTransition: historyStack.last?.transition ?? defaultTransition
+		)
 
 		let total = min(total, historyStack.count)
-		let start = historyStack.count - total
-		forwardStack.append(contentsOf: historyStack[start...].reversed())
 		historyStack.removeLast(total)
 		
 		lastAction = NavigationAction(
 			currentPath: path,
 			previousPath: previousPath,
-			action: .back)
-	}
-	
-	/// Go forward *n* steps in the navigation history.
-	///
-	/// `total` will always be clamped and thus prevent from going out of bounds.
-	///
-	/// - Parameter total: Total steps to go forward.
-	public func goForward(total: Int = 1) {
-		guard canGoForward else {
-			return
-		}
-
-		let previousPath = path
-
-		let total = min(total, forwardStack.count)
-		let start = forwardStack.count - total
-		historyStack.append(contentsOf: forwardStack[start...])
-		forwardStack.removeLast(total)
-		
-		lastAction = NavigationAction(
-			currentPath: path,
-			previousPath: previousPath,
-			action: .forward)
+			action: .back,
+			transition: transition
+		)
 	}
 	
 	/// Clear the entire navigation history.
 	public func clear() {
-		forwardStack.removeAll()
-		historyStack = [path]
+		historyStack = [HistoryStackItem(path: initialPath, transition: .identity)]
 		lastAction = nil
 	}
 }
@@ -159,55 +161,23 @@ extension Navigator: Equatable {
 // MARK: -
 /// Information about a navigation that occurred.
 public struct NavigationAction: Equatable {
-	/// Directional difference between the current path and the previous path.
-	public enum Direction {
-		/// The new path is higher up in the hierarchy *or* a completely different path.
-		/// Example: `/user/settings` → `/user`. Or `/favorite/music` → `/news/latest`.
-		case higher
-		/// The new path is deeper in the hierarchy. Example: `/news` → `/news/latest`.
-		case deeper
-		/// The new path shares the same parent. Example: `/favorite/movies` → `/favorite/music`.
-		case sideways
-	}
-	
 	/// The kind of navigation that occurred.
 	public enum Action {
 		/// Navigated to a new path.
 		case push
 		/// Navigated back in the stack.
 		case back
-		/// Navigated forward in the stack.
-		case forward
 	}
 	
-	public let action: Action
 	public let currentPath: String
 	public let previousPath: String
-	public let direction: Direction
-	
-	init(currentPath: String, previousPath: String, action: Action) {
-		self.action = action
-		self.currentPath = currentPath
-		self.previousPath = previousPath
-		
-		// Check whether the navigation went higher, deeper or sideways.
-		if currentPath.count > previousPath.count
-			&& (currentPath.starts(with: previousPath + "/") || previousPath == "/")
-		{
-			direction = .deeper
-		}
-		else {
-			let currentComponents = currentPath.split(separator: "/")
-			let previousComponents = previousPath.split(separator: "/")
+	public let action: Action
+	public let transition: FinalTransition
 
-			if currentComponents.count == previousComponents.count
-				&& currentComponents.dropLast(1) == previousComponents.dropLast(1)
-			{
-				direction = .sideways
-			}
-			else {
-				direction = .higher
-			}
-		}
+	public static func == (lhs: NavigationAction, rhs: NavigationAction) -> Bool {
+		lhs.currentPath == rhs.currentPath &&
+		lhs.previousPath == rhs.previousPath &&
+		lhs.action == rhs.action &&
+		lhs.transition == rhs.transition
 	}
 }
