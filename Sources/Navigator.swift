@@ -94,28 +94,33 @@ public final class Navigator: ObservableObject {
 			#endif
 			return
 		}
-		let finalTransition = FinalTransition(
-			optionalableTransition: transition,
-			defaultTransition: defaultTransition
-		)
+		if let index = historyStack.firstIndex(where: { $0.path == path }) {
+			goBack(total: historyStack.count - index - 1, transition: transition)
+		} else {
+			let finalTransition = FinalTransition(
+				optionalableTransition: transition,
+				defaultTransition: defaultTransition
+			)
+		
+			let stackItem = HistoryStackItem(
+				path: path,
+				transition: finalTransition
+			)
 
-		let stackItem = HistoryStackItem(
-			path: path,
-			transition: finalTransition
-		)
-
-		if replace && !historyStack.isEmpty {
-			historyStack[historyStack.endIndex - 1] = stackItem
+			if replace && !historyStack.isEmpty {
+				historyStack[historyStack.endIndex - 1] = stackItem
+			}
+			else {
+				historyStack.append(stackItem)
+			}
+			lastAction = NavigationAction(
+				currentPath: path,
+				previousPath: previousPath,
+				action: .push,
+				transition: finalTransition
+			)
 		}
-		else {
-			historyStack.append(stackItem)
-		}
-		lastAction = NavigationAction(
-			currentPath: path,
-			previousPath: previousPath,
-			action: .push,
-			transition: finalTransition
-		)
+		
 	}
 
 	/// Go back *n* steps in the navigation history.
