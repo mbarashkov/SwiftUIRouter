@@ -87,6 +87,7 @@ public final class Navigator: ObservableObject {
 	) {
 		let path = resolvePaths(self.path, path)
 		let previousPath = self.path
+		let previousStackIndex = historyStack.count - 1
 		
 		guard path != previousPath else {
 			#if DEBUG
@@ -116,6 +117,7 @@ public final class Navigator: ObservableObject {
 			lastAction = NavigationAction(
 				currentPath: path,
 				previousPath: previousPath,
+				previousStackIndex: previousStackIndex,
 				action: .push,
 				transition: finalTransition
 			)
@@ -133,6 +135,7 @@ public final class Navigator: ObservableObject {
 			return
 		}
 		let previousPath = path
+		let previousStackIndex = historyStack.count - 1
 		let transition = FinalTransition(
 			optionalableTransition: transition,
 			defaultTransition: historyStack.last?.transition ?? defaultTransition
@@ -144,6 +147,7 @@ public final class Navigator: ObservableObject {
 		lastAction = NavigationAction(
 			currentPath: path,
 			previousPath: previousPath,
+			previousStackIndex: previousStackIndex,
 			action: .back,
 			transition: transition
 		)
@@ -176,6 +180,7 @@ public struct NavigationAction: Equatable {
 	
 	public let currentPath: String
 	public let previousPath: String
+	public let previousStackIndex: Int
 	public let action: Action
 	public let transition: FinalTransition
 

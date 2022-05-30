@@ -123,6 +123,13 @@ public struct Route<ValidatedData, Content: View>: View {
 				fatalError("Unable to compile path glob '\(path)' to Regex. Error: \(error)")
 			}
 		}
+		if let lastAction = navigator.lastAction {
+			stackInfoHolder.stackInfo.keys
+				.filter { $0 > navigator.currentStackIndex && $0 < lastAction.previousStackIndex }
+				.forEach { key in
+					stackInfoHolder.stackInfo.removeValue(forKey: key)
+				}
+		}
 		let action = navigator.lastAction?.action ?? .push
 		let transition = navigator.lastAction?.transition ?? .identity
 		return Group {
@@ -149,7 +156,7 @@ public struct Route<ValidatedData, Content: View>: View {
 				}
 				.environment(\.isCurrentDestination, info != nil)
 				.ignoresSafeArea()
-				.zIndex(key == navigator.currentStackIndex ? Double.infinity : Double(key))
+				.zIndex(Double(key))
 			}
 		}
 	}
