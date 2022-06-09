@@ -33,7 +33,8 @@ public final class Navigator: ObservableObject {
 	
 	private let initialPath: String
 
-	var defaultTransition: FinalTransition
+	let defaultTransition: FinalTransition
+	let minGoBackPanGestureDistance: CGFloat
 	
 	/// Initialize a `Navigator` to be fed to `Router` manually.
 	///
@@ -43,9 +44,14 @@ public final class Navigator: ObservableObject {
 	/// It is strongly advised to reference the `Navigator` via the provided Environment Object instead.
 	///
 	/// - Parameter initialPath: The initial path the `Navigator` should start at once initialized.
-	public init(initialPath: String = "/", defaultTransition: FinalTransition) {
+	public init(
+		initialPath: String = "/",
+		defaultTransition: FinalTransition,
+		minGoBackPanGestureDistance: CGFloat
+	) {
 		self.initialPath = initialPath
 		self.defaultTransition = defaultTransition
+		self.minGoBackPanGestureDistance = minGoBackPanGestureDistance
 		self.historyStack = [HistoryStackItem(path: initialPath, transition: FinalTransition(type: .identity, duration: 0, curve: .linear))]
 	}
 

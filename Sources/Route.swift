@@ -138,7 +138,16 @@ public struct Route<ValidatedData, Content: View>: View {
 				SaveableContainer(
 					contentData: info,
 					transition: transition,
-					action: action
+					action: action,
+					onPanGestureDiffChanged: { xOffset in
+						if
+							navigator.canGoBack,
+							xOffset > navigator.minGoBackPanGestureDistance,
+							navigator.currentStackIndex == key
+						{
+							navigator.goBack()
+						}
+					}
 				) { viewInfo in
 					content(viewInfo.validatedData)
 						.environment(\.relativePath, viewInfo.routeInformation.path)

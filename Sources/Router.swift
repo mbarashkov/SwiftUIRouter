@@ -34,8 +34,20 @@ public struct Router<Content: View>: View {
 	/// Initialize a Router environment.
 	/// - Parameter initialPath: The initial path the `Router` should start at once initialized.
 	/// - Parameter content: Content views to render inside the Router environment.
-	public init(initialPath: String = "/", defaultTransition: FinalTransition = .identity, @ViewBuilder content: () -> Content) {
-		_navigator = StateObject(wrappedValue: Navigator(initialPath: initialPath, defaultTransition: defaultTransition))
+	public init(
+		initialPath: String = "/",
+		defaultTransition: FinalTransition = .identity,
+		minGoBackPanGestureDistance: CGFloat,
+		@ViewBuilder content: () -> Content
+	) {
+		_navigator = StateObject(
+			wrappedValue:
+				Navigator(
+					initialPath: initialPath,
+					defaultTransition: defaultTransition,
+					minGoBackPanGestureDistance: minGoBackPanGestureDistance
+				)
+		)
 		self.content = content()
 	}
 	
