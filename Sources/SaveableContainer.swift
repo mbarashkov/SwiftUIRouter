@@ -194,7 +194,6 @@ final class HostingControllerWrapper<Content: View, Data>: UIViewController {
 
 	@objc private func onPanGestureEvent(_ gestureRecognizer: UIPanGestureRecognizer) {
 		let location = gestureRecognizer.location(in: gestureRecognizer.view!)
-		print(#function, location)
 		switch gestureRecognizer.state {
 		case .began:
 			startLocation = location
