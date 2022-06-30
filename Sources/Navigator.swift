@@ -62,7 +62,7 @@ public final class Navigator: ObservableObject {
 	}
 
 	public var canGoBack: Bool {
-		historyStack.count > 1
+		historyStack.filter { $0.path != initialPath }.count > 1
 	}
 
 	public var currentStackIndex: Int {
