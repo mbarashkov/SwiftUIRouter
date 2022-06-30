@@ -33,7 +33,8 @@ public final class Navigator: ObservableObject {
 	
 	private let initialPath: String
 
-	var defaultTransition: FinalTransition
+	let defaultTransition: FinalTransition
+	let minGoBackPanGestureDistance: CGFloat
 	
 	/// Initialize a `Navigator` to be fed to `Router` manually.
 	///
@@ -43,9 +44,14 @@ public final class Navigator: ObservableObject {
 	/// It is strongly advised to reference the `Navigator` via the provided Environment Object instead.
 	///
 	/// - Parameter initialPath: The initial path the `Navigator` should start at once initialized.
-	public init(initialPath: String = "/", defaultTransition: FinalTransition) {
+	public init(
+		initialPath: String = "/",
+		defaultTransition: FinalTransition,
+		minGoBackPanGestureDistance: CGFloat
+	) {
 		self.initialPath = initialPath
 		self.defaultTransition = defaultTransition
+		self.minGoBackPanGestureDistance = minGoBackPanGestureDistance
 		self.historyStack = [HistoryStackItem(path: initialPath, transition: FinalTransition(type: .identity, duration: 0, curve: .linear))]
 	}
 
@@ -87,6 +93,7 @@ public final class Navigator: ObservableObject {
 	) {
 		let path = resolvePaths(self.path, path)
 		let previousPath = self.path
+		let previousStackIndex = historyStack.count - 1
 		
 		guard path != previousPath else {
 			#if DEBUG
@@ -116,6 +123,7 @@ public final class Navigator: ObservableObject {
 			lastAction = NavigationAction(
 				currentPath: path,
 				previousPath: previousPath,
+				previousStackIndex: previousStackIndex,
 				action: .push,
 				transition: finalTransition
 			)
@@ -133,6 +141,7 @@ public final class Navigator: ObservableObject {
 			return
 		}
 		let previousPath = path
+		let previousStackIndex = historyStack.count - 1
 		let transition = FinalTransition(
 			optionalableTransition: transition,
 			defaultTransition: historyStack.last?.transition ?? defaultTransition
@@ -144,6 +153,7 @@ public final class Navigator: ObservableObject {
 		lastAction = NavigationAction(
 			currentPath: path,
 			previousPath: previousPath,
+			previousStackIndex: previousStackIndex,
 			action: .back,
 			transition: transition
 		)
@@ -176,6 +186,7 @@ public struct NavigationAction: Equatable {
 	
 	public let currentPath: String
 	public let previousPath: String
+	public let previousStackIndex: Int
 	public let action: Action
 	public let transition: FinalTransition
 

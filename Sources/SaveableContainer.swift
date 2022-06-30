@@ -5,6 +5,7 @@ struct SaveableContainer<Content: View, Data>: UIViewControllerRepresentable {
 	
 	let transition: FinalTransition
 	let action: NavigationAction.Action
+	let onPanGestureDiffChanged: ((CGFloat) -> Void)?
 	@ViewBuilder
 	let content: (Data) -> Content
 
@@ -12,11 +13,13 @@ struct SaveableContainer<Content: View, Data>: UIViewControllerRepresentable {
 		contentData: Data?,
 		transition: FinalTransition,
 		action: NavigationAction.Action,
+		onPanGestureDiffChanged: ((CGFloat) -> Void)?,
 		@ViewBuilder content: @escaping (Data) -> Content
 	) {
 		self.contentData = contentData
 		self.transition = transition
 		self.action = action
+		self.onPanGestureDiffChanged = onPanGestureDiffChanged
 		self.content = content
 	}
 
@@ -29,6 +32,7 @@ struct SaveableContainer<Content: View, Data>: UIViewControllerRepresentable {
 		uiViewController.contentData = contentData
 		uiViewController.transition = transition
 		uiViewController.action = action
+		uiViewController.onPanGestureDiffChanged = onPanGestureDiffChanged
 		uiViewController.animateIfNeeded()
 	}
 }
@@ -41,7 +45,16 @@ final class HostingControllerWrapper<Content: View, Data>: UIViewController {
 		case disappearing
 	}
 
-	var hostingController: UIHostingController<Content>!
+	private var hostingController: UIHostingController<Content>!
+
+	private let screenEdgePanGestureRecognizer = UIScreenEdgePanGestureRecognizer()
+	private let panGestureRecognizer = UIPanGestureRecognizer()
+	private var pushAppearanceTransition: FinalTransition? {
+		didSet {
+			screenEdgePanGestureRecognizer.isEnabled = transition.type == .sliderNav
+			panGestureRecognizer.isEnabled = transition.type == .modal
+		}
+	}
 
 	init(content: @escaping (Data) -> Content) {
 		self.content = content
@@ -49,6 +62,15 @@ final class HostingControllerWrapper<Content: View, Data>: UIViewController {
 		view.backgroundColor = .clear
 		view.clipsToBounds = true
 		view.isUserInteractionEnabled = false
+		screenEdgePanGestureRecognizer.edges = [.left]
+		[
+			screenEdgePanGestureRecognizer,
+			panGestureRecognizer,
+		].forEach { gestureRecognizer in
+			gestureRecognizer.isEnabled = false
+			gestureRecognizer.addTarget(self, action: #selector(onPanGestureEvent(_:)))
+			view.addGestureRecognizer(gestureRecognizer)
+		}
 	}
 
 	var content: (Data) -> Content {
@@ -59,6 +81,7 @@ final class HostingControllerWrapper<Content: View, Data>: UIViewController {
 	var transition: FinalTransition = FinalTransition.identity
 	var action: NavigationAction.Action = .push
 	var contentData: Data?
+	var onPanGestureDiffChanged: ((CGFloat) -> Void)? = nil
 
 	private func updateContentIfNeeded() {
 		if let contentData = savedContentData, state != .hidden {
@@ -106,6 +129,10 @@ final class HostingControllerWrapper<Content: View, Data>: UIViewController {
 
 		let transitionBuilder = transition.type.transitionBuilder
 		let createParameters = visible ? transitionBuilder.appearingParameters : transitionBuilder.disappearingParameters
+
+		if visible, pushAppearanceTransition == nil {
+			pushAppearanceTransition = transition
+		}
 
 		view.layoutIfNeeded()
 		view.isUserInteractionEnabled = false
@@ -160,6 +187,34 @@ final class HostingControllerWrapper<Content: View, Data>: UIViewController {
 		} else {
 			animations()
 			animationCompletion()
+		}
+	}
+
+	private var startLocation: CGPoint?
+
+	@objc private func onPanGestureEvent(_ gestureRecognizer: UIPanGestureRecognizer) {
+		let location = gestureRecognizer.location(in: gestureRecognizer.view!)
+		switch gestureRecognizer.state {
+		case .began:
+			startLocation = location
+
+		case .changed:
+			guard let startLocation = startLocation else { return }
+			let diff: CGFloat
+			switch gestureRecognizer {
+			case screenEdgePanGestureRecognizer:
+				diff = location.x - startLocation.x
+
+			case panGestureRecognizer:
+				diff = location.y - startLocation.y
+
+			default:
+				return
+			}
+			onPanGestureDiffChanged?(diff)
+
+		default:
+			startLocation = nil
 		}
 	}
 
