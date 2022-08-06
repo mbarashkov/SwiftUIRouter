@@ -89,6 +89,7 @@ public final class Navigator: ObservableObject {
 	public func navigate(
 		_ path: String,
 		transition: Transition = Transition(),
+		navigateBackIfNeeded: Bool = true,
 		replace: Bool = false
 	) {
 		let path = resolvePaths(self.path, path)
@@ -101,7 +102,7 @@ public final class Navigator: ObservableObject {
 			#endif
 			return
 		}
-		if let index = historyStack.firstIndex(where: { $0.path == path }) {
+		if let index = historyStack.firstIndex(where: { $0.path == path }), navigateBackIfNeeded {
 			goBack(total: historyStack.count - index - 1, transition: transition)
 		} else {
 			let finalTransition = FinalTransition(
