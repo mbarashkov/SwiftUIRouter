@@ -51,7 +51,15 @@ final class HostingControllerWrapper<Content: View, Data>: UIViewController {
 	private let panGestureRecognizer = UIPanGestureRecognizer()
 	private var pushAppearanceTransition: FinalTransition? {
 		didSet {
-			screenEdgePanGestureRecognizer.isEnabled = transition.type == .sliderNav
+			var screenEdgePanGestureRecognizerEnabled : Bool
+			switch transition.type {
+				case .sliderNav(let edgeGestureEnabled):
+					screenEdgePanGestureRecognizerEnabled = edgeGestureEnabled
+
+				default:
+					screenEdgePanGestureRecognizerEnabled = false
+			}
+			screenEdgePanGestureRecognizer.isEnabled = screenEdgePanGestureRecognizerEnabled
 			panGestureRecognizer.isEnabled = transition.type == .modal
 		}
 	}

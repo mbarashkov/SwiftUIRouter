@@ -18,10 +18,12 @@ public struct Transition {
 		self.init(type: .modal, duration: duration, curve: curve)
 	}
 
-	public static let sliderNav = Transition(type: .sliderNav)
+	public static func createSliderNav(edgeGestureEnabled: Bool) -> Transition {
+		Transition(type: .sliderNav(edgeGestureEnabled))
+	}
 
 	public static func sliderNav(duration: TimeInterval? = nil, curve: UIView.AnimationCurve? = nil) -> Self {
-		self.init(type: .sliderNav, duration: duration, curve: curve)
+		self.init(type: .sliderNav(true), duration: duration, curve: curve)
 	}
 
 	public static let modal = Transition(type: .modal)
@@ -72,7 +74,7 @@ public enum TransitionType: Equatable {
 	case identity
 	case modal
 	case overlay
-	case sliderNav
+	case sliderNav(Bool)
 	case custom(TransitionBuilder.Type)
 
 	var transitionBuilder: TransitionBuilder.Type {
