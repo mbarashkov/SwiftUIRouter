@@ -37,7 +37,11 @@ struct SaveableContainer<Content: View, Data>: UIViewControllerRepresentable {
 	}
 }
 
-final class HostingControllerWrapper<Content: View, Data>: UIViewController {
+public protocol EdgePanGestureEnabler: AnyObject {
+	func setEdgePanGesture(enabled: Bool)
+}
+
+final class HostingControllerWrapper<Content: View, Data>: UIViewController, EdgePanGestureEnabler {
 	private enum PresenceState {
 		case hidden
 		case appearing
@@ -62,6 +66,10 @@ final class HostingControllerWrapper<Content: View, Data>: UIViewController {
 			screenEdgePanGestureRecognizer.isEnabled = screenEdgePanGestureRecognizerEnabled
 			panGestureRecognizer.isEnabled = transition.type == .modal
 		}
+	}
+
+	func setEdgePanGesture(enabled: Bool) {
+		screenEdgePanGestureRecognizer.isEnabled = enabled
 	}
 
 	init(content: @escaping (Data) -> Content) {
