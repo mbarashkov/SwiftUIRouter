@@ -22,6 +22,10 @@ public struct Transition {
 		Transition(type: .sliderNav(edgeGestureEnabled))
 	}
 
+	public static func createReverseSliderNav(edgeGestureEnabled: Bool) -> Transition {
+		Transition(type: .reverseSliderNav(edgeGestureEnabled))
+	}
+
 	public static func sliderNav(duration: TimeInterval? = nil, curve: UIView.AnimationCurve? = nil) -> Self {
 		self.init(type: .sliderNav(true), duration: duration, curve: curve)
 	}
@@ -64,6 +68,8 @@ public enum TransitionType: Equatable {
 			guard case .overlay = rhs else { return false }
 		case .sliderNav:
 			guard case .sliderNav = rhs else { return false }
+		case .reverseSliderNav:
+			guard case .reverseSliderNav = rhs else { return false }
 		case .custom(let lhsBuilder):
 			guard case .custom(let rhsBuilder) = rhs else { return false }
 			return lhsBuilder == rhsBuilder
@@ -75,6 +81,7 @@ public enum TransitionType: Equatable {
 	case modal
 	case overlay
 	case sliderNav(Bool)
+	case reverseSliderNav(Bool)
 	case custom(TransitionBuilder.Type)
 
 	var transitionBuilder: TransitionBuilder.Type {
@@ -87,6 +94,8 @@ public enum TransitionType: Equatable {
 			return OverlayTransition.self
 		case .sliderNav:
 			return SlideNavTransition.self
+		case .reverseSliderNav:
+			return ReverseSlideNavTransition.self
 		case .custom(let transition):
 			return transition
 		}
