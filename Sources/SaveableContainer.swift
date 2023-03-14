@@ -60,6 +60,9 @@ final class HostingControllerWrapper<Content: View, Data>: UIViewController, Edg
 				case .sliderNav(let edgeGestureEnabled):
 					screenEdgePanGestureRecognizerEnabled = edgeGestureEnabled
 
+				case .reverseSliderNav(let edgeGestureEnabled):
+					screenEdgePanGestureRecognizerEnabled = edgeGestureEnabled
+
 				default:
 					screenEdgePanGestureRecognizerEnabled = false
 			}
