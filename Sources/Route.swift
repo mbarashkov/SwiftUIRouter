@@ -124,7 +124,11 @@ public struct Route<ValidatedData, Content: View>: View {
 			}
 		}
 		if let lastAction = navigator.lastAction {
-			stackInfoHolder.stackInfo = stackInfoHolder.stackInfo.filter { $0.key <= navigator.currentStackIndex }
+			stackInfoHolder.stackInfo.keys
+				.filter { $0 > navigator.currentStackIndex && $0 < lastAction.previousStackIndex }
+				.forEach { key in
+					stackInfoHolder.stackInfo.removeValue(forKey: key)
+				}
 		}
 		let action = navigator.lastAction?.action ?? .push
 		let transition = navigator.lastAction?.transition ?? .identity
